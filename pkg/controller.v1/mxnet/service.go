@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	"github.com/kubeflow/tf-operator/pkg/common/jobcontroller"
 	mxlogger "github.com/kubeflow/tf-operator/pkg/logger"
 )
@@ -32,10 +32,10 @@ import (
 // reconcileServices checks and updates services for each given MXReplicaSpec.
 // It will requeue the mxjob in case of an error while creating/deleting services.
 func (tc *MXController) reconcileServices(
-	mxjob *mxv1beta1.MXJob,
+	mxjob *mxv1.MXJob,
 	services []*v1.Service,
-	rtype mxv1beta1.MXReplicaType,
-	spec *mxv1beta1.MXReplicaSpec) error {
+	rtype mxv1.MXReplicaType,
+	spec *mxv1.MXReplicaSpec) error {
 
 	// Convert MXReplicaType to lower string.
 	rt := strings.ToLower(string(rtype))
@@ -66,7 +66,7 @@ func (tc *MXController) reconcileServices(
 }
 
 // createNewService creates a new service for the given index and type.
-func (tc *MXController) createNewService(mxjob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplicaType, index string, spec *mxv1beta1.MXReplicaSpec) error {
+func (tc *MXController) createNewService(mxjob *mxv1.MXJob, rtype mxv1.MXReplicaType, index string, spec *mxv1.MXReplicaSpec) error {
 	mxjobKey, err := KeyFunc(mxjob)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for mxjob object %#v: %v", mxjob, err))
@@ -100,7 +100,7 @@ func (tc *MXController) createNewService(mxjob *mxv1beta1.MXJob, rtype mxv1beta1
 			Selector:  labels,
 			Ports: []v1.ServicePort{
 				{
-					Name: mxv1beta1.DefaultPortName,
+					Name: mxv1.DefaultPortName,
 					Port: port,
 				},
 			},

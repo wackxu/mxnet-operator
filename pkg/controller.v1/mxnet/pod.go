@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	"github.com/kubeflow/tf-operator/pkg/common/jobcontroller"
 	mxlogger "github.com/kubeflow/tf-operator/pkg/logger"
 	train_util "github.com/kubeflow/tf-operator/pkg/util/train"
@@ -51,10 +51,10 @@ const (
 // reconcilePods checks and updates pods for each given MXReplicaSpec.
 // It will requeue the mxjob in case of an error while creating/deleting pods.
 func (tc *MXController) reconcilePods(
-	mxjob *mxv1beta1.MXJob,
+	mxjob *mxv1.MXJob,
 	pods []*v1.Pod,
-	rtype mxv1beta1.MXReplicaType,
-	spec *mxv1beta1.MXReplicaSpec, rstatus map[string]v1.PodPhase) error {
+	rtype mxv1.MXReplicaType,
+	spec *mxv1.MXReplicaSpec, rstatus map[string]v1.PodPhase) error {
 
 	// Convert MXReplicaType to lower string.
 	rt := strings.ToLower(string(rtype))
@@ -88,14 +88,14 @@ func (tc *MXController) reconcilePods(
 			var exitCode int32 = 0xbeef // magic number
 			for _, status := range pod.Status.ContainerStatuses {
 				state := status.State
-				if status.Name == mxv1beta1.DefaultContainerName && state.Terminated != nil {
+				if status.Name == mxv1.DefaultContainerName && state.Terminated != nil {
 					exitCode = state.Terminated.ExitCode
 					logger.Infof("Pod: %v.%v exited with code %v", pod.Namespace, pod.Name, exitCode)
 					tc.Recorder.Eventf(mxjob, v1.EventTypeNormal, exitedWithCodeReason, "Pod: %v.%v exited with code %v", pod.Namespace, pod.Name, exitCode)
 				}
 			}
 			// Check if the pod is retryable.
-			if spec.RestartPolicy == mxv1beta1.RestartPolicyExitCode {
+			if spec.RestartPolicy == mxv1.RestartPolicyExitCode {
 				if pod.Status.Phase == v1.PodFailed && train_util.IsRetryableExitCode(exitCode) {
 					logger.Infof("Need to restart the pod: %v.%v", pod.Namespace, pod.Name)
 					if err := tc.PodControl.DeletePod(pod.Namespace, pod.Name, mxjob); err != nil {
@@ -106,7 +106,7 @@ func (tc *MXController) reconcilePods(
 			}
 
 			// Check whether scheduler is exited without error.
-			if rtype == mxv1beta1.MXReplicaTypeScheduler && exitCode == 0 {
+			if rtype == mxv1.MXReplicaTypeScheduler && exitCode == 0 {
 				schedulerCompleted = true
 			}
 			updateMXJobReplicaStatuses(mxjob, rtype, pod)
@@ -117,7 +117,7 @@ func (tc *MXController) reconcilePods(
 }
 
 // createNewPod creates a new pod for the given index and type.
-func (tc *MXController) createNewPod(mxjob *mxv1beta1.MXJob, rt, index string, spec *mxv1beta1.MXReplicaSpec) error {
+func (tc *MXController) createNewPod(mxjob *mxv1.MXJob, rt, index string, spec *mxv1.MXReplicaSpec) error {
 	mxjobKey, err := KeyFunc(mxjob)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for mxjob object %#v: %v", mxjob, err))
@@ -192,7 +192,7 @@ func (tc *MXController) createNewPod(mxjob *mxv1beta1.MXJob, rt, index string, s
 	return nil
 }
 
-func setClusterSpec(podTemplateSpec *v1.PodTemplateSpec, mxjob *mxv1beta1.MXJob, rt, index string) error {
+func setClusterSpec(podTemplateSpec *v1.PodTemplateSpec, mxjob *mxv1.MXJob, rt, index string) error {
 
 	// Generate MX_CONFIG JSON.
 	mxConfigData, err := genMXConfig(mxjob, rt, index)
@@ -221,22 +221,22 @@ func setClusterSpec(podTemplateSpec *v1.PodTemplateSpec, mxjob *mxv1beta1.MXJob,
 		// We get these envs from MX_COFING to make them stay identical
 		c.Env = append(c.Env, v1.EnvVar{
 			Name:  "DMLC_PS_ROOT_PORT",
-			Value: strconv.Itoa(getConfigAddr(&mxConfigData, mxv1beta1.MXReplicaTypeScheduler, 0).Port),
+			Value: strconv.Itoa(getConfigAddr(&mxConfigData, mxv1.MXReplicaTypeScheduler, 0).Port),
 		})
 
 		c.Env = append(c.Env, v1.EnvVar{
 			Name:  "DMLC_PS_ROOT_URI",
-			Value: getConfigAddr(&mxConfigData, mxv1beta1.MXReplicaTypeScheduler, 0).Url,
+			Value: getConfigAddr(&mxConfigData, mxv1.MXReplicaTypeScheduler, 0).Url,
 		})
 
 		c.Env = append(c.Env, v1.EnvVar{
 			Name:  "DMLC_NUM_SERVER",
-			Value: strconv.Itoa(getConfigReplica(&mxConfigData, mxv1beta1.MXReplicaTypeServer)),
+			Value: strconv.Itoa(getConfigReplica(&mxConfigData, mxv1.MXReplicaTypeServer)),
 		})
 
 		c.Env = append(c.Env, v1.EnvVar{
 			Name:  "DMLC_NUM_WORKER",
-			Value: strconv.Itoa(getConfigReplica(&mxConfigData, mxv1beta1.MXReplicaTypeWorker)),
+			Value: strconv.Itoa(getConfigReplica(&mxConfigData, mxv1.MXReplicaTypeWorker)),
 		})
 
 		c.Env = append(c.Env, v1.EnvVar{
@@ -252,15 +252,15 @@ func setClusterSpec(podTemplateSpec *v1.PodTemplateSpec, mxjob *mxv1beta1.MXJob,
 	return nil
 }
 
-func setRestartPolicy(podTemplateSpec *v1.PodTemplateSpec, spec *mxv1beta1.MXReplicaSpec) {
-	if spec.RestartPolicy == mxv1beta1.RestartPolicyExitCode {
+func setRestartPolicy(podTemplateSpec *v1.PodTemplateSpec, spec *mxv1.MXReplicaSpec) {
+	if spec.RestartPolicy == mxv1.RestartPolicyExitCode {
 		podTemplateSpec.Spec.RestartPolicy = v1.RestartPolicyNever
 	} else {
 		podTemplateSpec.Spec.RestartPolicy = v1.RestartPolicy(spec.RestartPolicy)
 	}
 }
 
-func getConfigAddr(mxConfigData *MXConfig, rtype mxv1beta1.MXReplicaType, index int) Url_Port {
+func getConfigAddr(mxConfigData *MXConfig, rtype mxv1.MXReplicaType, index int) Url_Port {
 	rt := strings.ToLower(string(rtype))
 	var url_port Url_Port
 	if len(mxConfigData.Cluster[rt]) <= index {
@@ -275,12 +275,12 @@ func getConfigAddr(mxConfigData *MXConfig, rtype mxv1beta1.MXReplicaType, index 
 	return url_port
 }
 
-func getConfigReplica(mxConfigData *MXConfig, rtype mxv1beta1.MXReplicaType) int {
+func getConfigReplica(mxConfigData *MXConfig, rtype mxv1.MXReplicaType) int {
 	rt := strings.ToLower(string(rtype))
 	return len(mxConfigData.Cluster[rt])
 }
 
-func isNonGangSchedulerSet(job *mxv1beta1.MXJob) bool {
+func isNonGangSchedulerSet(job *mxv1.MXJob) bool {
 	for _, spec := range job.Spec.MXReplicaSpecs {
 		if spec.Template.Spec.SchedulerName != "" && spec.Template.Spec.SchedulerName != gangSchedulerName {
 			return true

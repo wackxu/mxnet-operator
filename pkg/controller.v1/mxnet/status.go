@@ -21,7 +21,7 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	mxlogger "github.com/kubeflow/tf-operator/pkg/logger"
 )
 
@@ -39,7 +39,7 @@ const (
 )
 
 // updateStatus updates the status of the mxjob.
- func updateStatusSingle(mxjob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplicaType, replicas int, restart, schedulerCompleted bool) error {
+ func updateStatusSingle(mxjob *mxv1.MXJob, rtype mxv1.MXReplicaType, replicas int, restart, schedulerCompleted bool) error {
 	// Expect to have `replicas - succeeded` pods alive.
 	expected := replicas - int(mxjob.Status.MXReplicaStatuses[rtype].Succeeded)
 	running := int(mxjob.Status.MXReplicaStatuses[rtype].Active)
@@ -54,10 +54,10 @@ const (
 	}
 
 	if ContainSchedulerSpec(mxjob) {
-		if rtype == mxv1beta1.MXReplicaTypeScheduler {
+		if rtype == mxv1.MXReplicaTypeScheduler {
 			if running > 0 {
 				msg := fmt.Sprintf("MXJob %s is running.", mxjob.Name)
-				err := updateMXJobConditions(mxjob, mxv1beta1.MXJobRunning, mxJobRunningReason, msg)
+				err := updateMXJobConditions(mxjob, mxv1.MXJobRunning, mxJobRunningReason, msg)
 				if err != nil {
 					mxlogger.LoggerForJob(mxjob).Infof("Append mxjob condition error: %v", err)
 					return err
@@ -69,7 +69,7 @@ const (
 					now := metav1.Now()
 					mxjob.Status.CompletionTime = &now
 				}
-				err := updateMXJobConditions(mxjob, mxv1beta1.MXJobSucceeded, mxJobSucceededReason, msg)
+				err := updateMXJobConditions(mxjob, mxv1.MXJobSucceeded, mxJobSucceededReason, msg)
 				if err != nil {
 					mxlogger.LoggerForJob(mxjob).Infof("Append mxjob condition error: %v", err)
 					return err
@@ -77,7 +77,7 @@ const (
 			}
 		}
 	} else {
-		if rtype == mxv1beta1.MXReplicaTypeWorker || rtype == mxv1beta1.MXReplicaTypeTuner {
+		if rtype == mxv1.MXReplicaTypeWorker || rtype == mxv1.MXReplicaTypeTuner {
 			// All workers are succeeded or scheduler completed, leave a succeeded condition.
 			if expected == 0 || schedulerCompleted {
 				msg := fmt.Sprintf("MXJob %s is successfully completed.", mxjob.Name)
@@ -85,7 +85,7 @@ const (
 					now := metav1.Now()
 					mxjob.Status.CompletionTime = &now
 				}
-				err := updateMXJobConditions(mxjob, mxv1beta1.MXJobSucceeded, mxJobSucceededReason, msg)
+				err := updateMXJobConditions(mxjob, mxv1.MXJobSucceeded, mxJobSucceededReason, msg)
 				if err != nil {
 					mxlogger.LoggerForJob(mxjob).Infof("Append mxjob condition error: %v", err)
 					return err
@@ -93,7 +93,7 @@ const (
 			} else if running > 0 {
 				// Some workers are still running, leave a running condition.
 				msg := fmt.Sprintf("MXJob %s is running.", mxjob.Name)
-				err := updateMXJobConditions(mxjob, mxv1beta1.MXJobRunning, mxJobRunningReason, msg)
+				err := updateMXJobConditions(mxjob, mxv1.MXJobRunning, mxJobRunningReason, msg)
 				if err != nil {
 					mxlogger.LoggerForJob(mxjob).Infof("Append mxjob condition error: %v", err)
 					return err
@@ -105,7 +105,7 @@ const (
 	if failed > 0 {
 		if restart {
 			msg := fmt.Sprintf("MXJob %s is restarting.", mxjob.Name)
-			err := updateMXJobConditions(mxjob, mxv1beta1.MXJobRestarting, mxJobRestartingReason, msg)
+			err := updateMXJobConditions(mxjob, mxv1.MXJobRestarting, mxJobRestartingReason, msg)
 			if err != nil {
 				mxlogger.LoggerForJob(mxjob).Infof("Append mxjob condition error: %v", err)
 				return err
@@ -116,7 +116,7 @@ const (
 				now := metav1.Now()
 				mxjob.Status.CompletionTime = &now
 			}
-			err := updateMXJobConditions(mxjob, mxv1beta1.MXJobFailed, mxJobFailedReason, msg)
+			err := updateMXJobConditions(mxjob, mxv1.MXJobFailed, mxJobFailedReason, msg)
 			if err != nil {
 				mxlogger.LoggerForJob(mxjob).Infof("Append mxjob condition error: %v", err)
 				return err
@@ -127,29 +127,29 @@ const (
 }
 
 // updateMXJobStatus updates the status of the given MXJob.
-func (tc *MXController) updateMXJobStatus(mxjob *mxv1beta1.MXJob) error {
-	_, err := tc.mxJobClientSet.KubeflowV1beta1().MXJobs(mxjob.Namespace).Update(mxjob)
+func (tc *MXController) updateMXJobStatus(mxjob *mxv1.MXJob) error {
+	_, err := tc.mxJobClientSet.KubeflowV1().MXJobs(mxjob.Namespace).Update(mxjob)
 	return err
 }
 
 // updateMXJobConditions updates the conditions of the given mxjob.
-func updateMXJobConditions(mxjob *mxv1beta1.MXJob, conditionType mxv1beta1.MXJobConditionType, reason, message string) error {
+func updateMXJobConditions(mxjob *mxv1.MXJob, conditionType mxv1.MXJobConditionType, reason, message string) error {
 	condition := newCondition(conditionType, reason, message)
 	setCondition(&mxjob.Status, condition)
 	return nil
 }
 
 // initializeMXReplicaStatuses initializes the MXReplicaStatuses for replica.
-func initializeMXReplicaStatuses(mxjob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplicaType) {
+func initializeMXReplicaStatuses(mxjob *mxv1.MXJob, rtype mxv1.MXReplicaType) {
 	if mxjob.Status.MXReplicaStatuses == nil {
-		mxjob.Status.MXReplicaStatuses = make(map[mxv1beta1.MXReplicaType]*mxv1beta1.MXReplicaStatus)
+		mxjob.Status.MXReplicaStatuses = make(map[mxv1.MXReplicaType]*mxv1.MXReplicaStatus)
 	}
 
-	mxjob.Status.MXReplicaStatuses[rtype] = &mxv1beta1.MXReplicaStatus{}
+	mxjob.Status.MXReplicaStatuses[rtype] = &mxv1.MXReplicaStatus{}
 }
 
 // updateMXJobReplicaStatuses updates the MXJobReplicaStatuses according to the pod.
-func updateMXJobReplicaStatuses(mxjob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplicaType, pod *v1.Pod) {
+func updateMXJobReplicaStatuses(mxjob *mxv1.MXJob, rtype mxv1.MXReplicaType, pod *v1.Pod) {
 	switch pod.Status.Phase {
 	case v1.PodRunning:
 		mxjob.Status.MXReplicaStatuses[rtype].Active++
@@ -161,8 +161,8 @@ func updateMXJobReplicaStatuses(mxjob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplic
 }
 
 // newCondition creates a new mxjob condition.
-func newCondition(conditionType mxv1beta1.MXJobConditionType, reason, message string) mxv1beta1.MXJobCondition {
-	return mxv1beta1.MXJobCondition{
+func newCondition(conditionType mxv1.MXJobConditionType, reason, message string) mxv1.MXJobCondition {
+	return mxv1.MXJobCondition{
 		Type:               conditionType,
 		Status:             v1.ConditionTrue,
 		LastUpdateTime:     metav1.Now(),
@@ -173,14 +173,14 @@ func newCondition(conditionType mxv1beta1.MXJobConditionType, reason, message st
 }
 
 // getCondition returns the condition with the provided type.
-func getCondition(status mxv1beta1.MXJobStatus, condType mxv1beta1.MXJobConditionType) *mxv1beta1.MXJobCondition {
+func getCondition(status mxv1.MXJobStatus, condType mxv1.MXJobConditionType) *mxv1.MXJobCondition {
 	if len(status.Conditions) > 0 {
 		return &status.Conditions[len(status.Conditions)-1]
 	}
 	return nil
 }
 
-func hasCondition(status mxv1beta1.MXJobStatus, condType mxv1beta1.MXJobConditionType) bool {
+func hasCondition(status mxv1.MXJobStatus, condType mxv1.MXJobConditionType) bool {
 	for _, condition := range status.Conditions {
 		if condition.Type == condType && condition.Status == v1.ConditionTrue {
 			return true
@@ -189,18 +189,18 @@ func hasCondition(status mxv1beta1.MXJobStatus, condType mxv1beta1.MXJobConditio
 	return false
 }
 
-func isSucceeded(status mxv1beta1.MXJobStatus) bool {
-	return hasCondition(status, mxv1beta1.MXJobSucceeded)
+func isSucceeded(status mxv1.MXJobStatus) bool {
+	return hasCondition(status, mxv1.MXJobSucceeded)
 }
 
-func isFailed(status mxv1beta1.MXJobStatus) bool {
-	return hasCondition(status, mxv1beta1.MXJobFailed)
+func isFailed(status mxv1.MXJobStatus) bool {
+	return hasCondition(status, mxv1.MXJobFailed)
 }
 
 // setCondition updates the mxjob to include the provided condition.
 // If the condition that we are about to add already exists
 // and has the same status and reason then we are not going to update.
-func setCondition(status *mxv1beta1.MXJobStatus, condition mxv1beta1.MXJobCondition) {
+func setCondition(status *mxv1.MXJobStatus, condition mxv1.MXJobCondition) {
 	// Do nothing if MXJobStatus have failed condition
 	if isFailed(*status) {
 		return
@@ -224,13 +224,13 @@ func setCondition(status *mxv1beta1.MXJobStatus, condition mxv1beta1.MXJobCondit
 }
 
 // filterOutCondition returns a new slice of mxjob conditions without conditions with the provided type.
-func filterOutCondition(conditions []mxv1beta1.MXJobCondition, condType mxv1beta1.MXJobConditionType) []mxv1beta1.MXJobCondition {
-	var newConditions []mxv1beta1.MXJobCondition
+func filterOutCondition(conditions []mxv1.MXJobCondition, condType mxv1.MXJobConditionType) []mxv1.MXJobCondition {
+	var newConditions []mxv1.MXJobCondition
 	for _, c := range conditions {
-		if condType == mxv1beta1.MXJobRestarting && c.Type == mxv1beta1.MXJobRunning {
+		if condType == mxv1.MXJobRestarting && c.Type == mxv1.MXJobRunning {
 			continue
 		}
-		if condType == mxv1beta1.MXJobRunning && c.Type == mxv1beta1.MXJobRestarting {
+		if condType == mxv1.MXJobRunning && c.Type == mxv1.MXJobRestarting {
 			continue
 		}
 
@@ -239,7 +239,7 @@ func filterOutCondition(conditions []mxv1beta1.MXJobCondition, condType mxv1beta
 		}
 
 		// Set the running condition status to be false when current condition failed or succeeded
-		if (condType == mxv1beta1.MXJobFailed || condType == mxv1beta1.MXJobSucceeded) && c.Type == mxv1beta1.MXJobRunning {
+		if (condType == mxv1.MXJobFailed || condType == mxv1.MXJobSucceeded) && c.Type == mxv1.MXJobRunning {
 			c.Status = v1.ConditionFalse
 		}
 

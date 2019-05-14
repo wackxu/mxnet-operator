@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1beta1
+package v1
 
 // IsScheduler returns true if the type is Scheduler.
 func IsScheduler(typ MXReplicaType) bool {

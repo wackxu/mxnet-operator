@@ -17,7 +17,7 @@ package mxnet
 import (
 	"fmt"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 )
 
 var (
@@ -25,13 +25,13 @@ var (
 )
 
 // GetPortFromMXJob gets the port of mxnet container.
-func GetPortFromMXJob(mxJob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplicaType) (int32, error) {
+func GetPortFromMXJob(mxJob *mxv1.MXJob, rtype mxv1.MXReplicaType) (int32, error) {
 	containers := mxJob.Spec.MXReplicaSpecs[rtype].Template.Spec.Containers
 	for _, container := range containers {
-		if container.Name == mxv1beta1.DefaultContainerName {
+		if container.Name == mxv1.DefaultContainerName {
 			ports := container.Ports
 			for _, port := range ports {
-				if port.Name == mxv1beta1.DefaultPortName {
+				if port.Name == mxv1.DefaultPortName {
 					return port.ContainerPort, nil
 				}
 			}
@@ -40,8 +40,8 @@ func GetPortFromMXJob(mxJob *mxv1beta1.MXJob, rtype mxv1beta1.MXReplicaType) (in
 	return -1, errPortNotFound
 }
 
-func ContainSchedulerSpec(mxJob *mxv1beta1.MXJob) bool {
-	if _, ok := mxJob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeScheduler]; ok {
+func ContainSchedulerSpec(mxJob *mxv1.MXJob) bool {
+	if _, ok := mxJob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeScheduler]; ok {
 		return true
 	}
 	return false

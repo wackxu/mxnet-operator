@@ -20,12 +20,12 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 )
 
-func NewMXJobWithCleanPolicy(scheduler, worker, server int, policy mxv1beta1.CleanPodPolicy) *mxv1beta1.MXJob {
+func NewMXJobWithCleanPolicy(scheduler, worker, server int, policy mxv1.CleanPodPolicy) *mxv1.MXJob {
 	
-	var mxJob *mxv1beta1.MXJob
+	var mxJob *mxv1.MXJob
 		
 	if scheduler > 0 {
 		mxJob = NewMXJobWithScheduler(worker, server)
@@ -37,9 +37,9 @@ func NewMXJobWithCleanPolicy(scheduler, worker, server int, policy mxv1beta1.Cle
 	return mxJob
 }
 
-func NewMXJobWithCleanupJobDelay(scheduler, worker, server int, ttl *int32) *mxv1beta1.MXJob {
+func NewMXJobWithCleanupJobDelay(scheduler, worker, server int, ttl *int32) *mxv1.MXJob {
 	
-	var mxJob *mxv1beta1.MXJob
+	var mxJob *mxv1.MXJob
 		
 	if scheduler > 0 {
 		mxJob = NewMXJobWithScheduler(worker, server)
@@ -48,49 +48,49 @@ func NewMXJobWithCleanupJobDelay(scheduler, worker, server int, ttl *int32) *mxv
 	}
 
 	mxJob.Spec.TTLSecondsAfterFinished = ttl
-	policy := mxv1beta1.CleanPodPolicyNone
+	policy := mxv1.CleanPodPolicyNone
 	mxJob.Spec.CleanPodPolicy = &policy
 	return mxJob
 }
 
-func NewMXJobWithScheduler(worker, server int) *mxv1beta1.MXJob {
+func NewMXJobWithScheduler(worker, server int) *mxv1.MXJob {
 	mxJob := NewMXJob(worker, server)
-	mxJob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeScheduler] = &mxv1beta1.MXReplicaSpec{
+	mxJob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeScheduler] = &mxv1.MXReplicaSpec{
 		Template: NewMXReplicaSpecTemplate(),
 	}
 	return mxJob
 }
 
-func NewMXJob(worker, server int) *mxv1beta1.MXJob {
-	mxJob := &mxv1beta1.MXJob{
+func NewMXJob(worker, server int) *mxv1.MXJob {
+	mxJob := &mxv1.MXJob{
 		TypeMeta: metav1.TypeMeta{
-			Kind: mxv1beta1.Kind,
+			Kind: mxv1.Kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      TestMXJobName,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: mxv1beta1.MXJobSpec{
-			MXReplicaSpecs: make(map[mxv1beta1.MXReplicaType]*mxv1beta1.MXReplicaSpec),
+		Spec: mxv1.MXJobSpec{
+			MXReplicaSpecs: make(map[mxv1.MXReplicaType]*mxv1.MXReplicaSpec),
 		},
 	}
 
 	if worker > 0 {
 		worker := int32(worker)
-		workerReplicaSpec := &mxv1beta1.MXReplicaSpec{
+		workerReplicaSpec := &mxv1.MXReplicaSpec{
 			Replicas: &worker,
 			Template: NewMXReplicaSpecTemplate(),
 		}
-		mxJob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeWorker] = workerReplicaSpec
+		mxJob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeWorker] = workerReplicaSpec
 	}
 
 	if server > 0 {
 		server := int32(server)
-		serverReplicaSpec := &mxv1beta1.MXReplicaSpec{
+		serverReplicaSpec := &mxv1.MXReplicaSpec{
 			Replicas: &server,
 			Template: NewMXReplicaSpecTemplate(),
 		}
-		mxJob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeServer] = serverReplicaSpec
+		mxJob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeServer] = serverReplicaSpec
 	}
 	return mxJob
 }
@@ -100,13 +100,13 @@ func NewMXReplicaSpecTemplate() v1.PodTemplateSpec {
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				v1.Container{
-					Name:  mxv1beta1.DefaultContainerName,
+					Name:  mxv1.DefaultContainerName,
 					Image: TestImageName,
 					Args:  []string{"Fake", "Fake"},
 					Ports: []v1.ContainerPort{
 						v1.ContainerPort{
-							Name:          mxv1beta1.DefaultPortName,
-							ContainerPort: mxv1beta1.DefaultPort,
+							Name:          mxv1.DefaultPortName,
+							ContainerPort: mxv1.DefaultPort,
 						},
 					},
 				},
@@ -115,7 +115,7 @@ func NewMXReplicaSpecTemplate() v1.PodTemplateSpec {
 	}
 }
 
-func SetMXJobCompletionTime(mxJob *mxv1beta1.MXJob) {
+func SetMXJobCompletionTime(mxJob *mxv1.MXJob) {
 	now := metav1.Time{Time: time.Now()}
 	mxJob.Status.CompletionTime = &now
 }

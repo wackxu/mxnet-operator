@@ -10,7 +10,7 @@ import (
 	metav1unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	"github.com/kubeflow/mxnet-operator/pkg/util/k8sutil"
 	mxlogger "github.com/kubeflow/tf-operator/pkg/logger"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,7 +29,7 @@ func (tc *MXController) addMXJob(obj interface{}) {
 		un, ok := obj.(*metav1unstructured.Unstructured)
 		logger := &log.Entry{}
 		if ok {
-			logger = mxlogger.LoggerForUnstructured(un, mxv1beta1.Kind)
+			logger = mxlogger.LoggerForUnstructured(un, mxv1.Kind)
 		}
 		logger.Errorf("Failed to convert the MXJob: %v", err)
 		// Log the failure to conditions.
@@ -39,10 +39,10 @@ func (tc *MXController) addMXJob(obj interface{}) {
 			// TODO(jlewi): v1 doesn't appear to define an error type.
 			tc.Recorder.Event(un, v1.EventTypeWarning, failedMarshalMXJobReason, errMsg)
 
-			status := mxv1beta1.MXJobStatus{
-				Conditions: []mxv1beta1.MXJobCondition{
-					mxv1beta1.MXJobCondition{
-						Type:               mxv1beta1.MXJobFailed,
+			status := mxv1.MXJobStatus{
+				Conditions: []mxv1.MXJobCondition{
+					mxv1.MXJobCondition{
+						Type:               mxv1.MXJobFailed,
 						Status:             v1.ConditionTrue,
 						LastUpdateTime:     metav1.Now(),
 						LastTransitionTime: metav1.Now(),
@@ -56,11 +56,11 @@ func (tc *MXController) addMXJob(obj interface{}) {
 				logger.Errorf("Could not covert the MXJobStatus to unstructured; %v", err)
 				return
 			}
-			client, err := k8sutil.NewCRDRestClient(&mxv1beta1.SchemeGroupVersion)
+			client, err := k8sutil.NewCRDRestClient(&mxv1.SchemeGroupVersion)
 			if err == nil {
 				metav1unstructured.SetNestedField(un.Object, statusMap, "status")
 				logger.Infof("Updating the job to; %+v", un.Object)
-				err = client.Update(un, mxv1beta1.Plural)
+				err = client.Update(un, mxv1.Plural)
 				if err != nil {
 					logger.Errorf("Could not update the MXJob; %v", err)
 				}
@@ -79,7 +79,7 @@ func (tc *MXController) addMXJob(obj interface{}) {
 	logger.Info(msg)
 
 	// Add a created condition.
-	err = updateMXJobConditions(mxJob, mxv1beta1.MXJobCreated, mxJobCreatedReason, msg)
+	err = updateMXJobConditions(mxJob, mxv1.MXJobCreated, mxJobCreatedReason, msg)
 	if err != nil {
 		logger.Errorf("Append mxJob condition error: %v", err)
 		return
@@ -104,18 +104,18 @@ func (tc *MXController) updateMXJob(old, cur interface{}) {
 	tc.enqueueMXJob(cur)
 }
 
-func (tc *MXController) deletePodsAndServices(mxJob *mxv1beta1.MXJob, pods []*v1.Pod) error {
+func (tc *MXController) deletePodsAndServices(mxJob *mxv1.MXJob, pods []*v1.Pod) error {
 	if len(pods) == 0 {
 		return nil
 	}
 
 	// Delete nothing when the cleanPodPolicy is None.
-	if *mxJob.Spec.CleanPodPolicy == mxv1beta1.CleanPodPolicyNone {
+	if *mxJob.Spec.CleanPodPolicy == mxv1.CleanPodPolicyNone {
 		return nil
 	}
 
 	for _, pod := range pods {
-		if *mxJob.Spec.CleanPodPolicy == mxv1beta1.CleanPodPolicyRunning && pod.Status.Phase != v1.PodRunning {
+		if *mxJob.Spec.CleanPodPolicy == mxv1.CleanPodPolicyRunning && pod.Status.Phase != v1.PodRunning {
 			continue
 		}
 
@@ -130,7 +130,7 @@ func (tc *MXController) deletePodsAndServices(mxJob *mxv1beta1.MXJob, pods []*v1
 	return nil
 }
 
-func (tc *MXController) cleanupMXJob(mxJob *mxv1beta1.MXJob) error {
+func (tc *MXController) cleanupMXJob(mxJob *mxv1.MXJob) error {
 	currentTime := time.Now()
 	ttl := mxJob.Spec.TTLSecondsAfterFinished
 	if ttl == nil {
@@ -156,6 +156,6 @@ func (tc *MXController) cleanupMXJob(mxJob *mxv1beta1.MXJob) error {
 }
 
 // deleteMXJob deletes the given MXJob.
-func (tc *MXController) deleteMXJob(mxJob *mxv1beta1.MXJob) error {
+func (tc *MXController) deleteMXJob(mxJob *mxv1.MXJob) error {
 	return tc.mxJobClientSet.KubeflowV1beta1().MXJobs(mxJob.Namespace).Delete(mxJob.Name, &metav1.DeleteOptions{})
 }

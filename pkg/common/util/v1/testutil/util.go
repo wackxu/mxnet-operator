@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,7 +36,7 @@ var (
 	// IndexerInformer uses a delta queue, therefore for deletes we have to use this
 	// key function but it should be just fine for non delete events.
 	KeyFunc   = cache.DeletionHandlingMetaNamespaceKeyFunc
-	GroupName = mxv1beta1.GroupName
+	GroupName = mxv1.GroupName
 )
 
 func GenLabels(jobName string) map[string]string {
@@ -46,11 +46,11 @@ func GenLabels(jobName string) map[string]string {
 	}
 }
 
-func GenOwnerReference(mxjob *mxv1beta1.MXJob) *metav1.OwnerReference {
+func GenOwnerReference(mxjob *mxv1.MXJob) *metav1.OwnerReference {
 	boolPtr := func(b bool) *bool { return &b }
 	controllerRef := &metav1.OwnerReference{
-		APIVersion:         mxv1beta1.SchemeGroupVersion.String(),
-		Kind:               mxv1beta1.Kind,
+		APIVersion:         mxv1.SchemeGroupVersion.String(),
+		Kind:               mxv1.Kind,
 		Name:               mxjob.Name,
 		UID:                mxjob.UID,
 		BlockOwnerDeletion: boolPtr(true),
@@ -61,7 +61,7 @@ func GenOwnerReference(mxjob *mxv1beta1.MXJob) *metav1.OwnerReference {
 }
 
 // ConvertMXJobToUnstructured uses JSON to convert MXJob to Unstructured.
-func ConvertMXJobToUnstructured(mxJob *mxv1beta1.MXJob) (*unstructured.Unstructured, error) {
+func ConvertMXJobToUnstructured(mxJob *mxv1.MXJob) (*unstructured.Unstructured, error) {
 	var unstructured unstructured.Unstructured
 	b, err := json.Marshal(mxJob)
 	if err != nil {
@@ -74,7 +74,7 @@ func ConvertMXJobToUnstructured(mxJob *mxv1beta1.MXJob) (*unstructured.Unstructu
 	return &unstructured, nil
 }
 
-func GetKey(mxJob *mxv1beta1.MXJob, t *testing.T) string {
+func GetKey(mxJob *mxv1.MXJob, t *testing.T) string {
 	key, err := KeyFunc(mxJob)
 	if err != nil {
 		t.Errorf("Unexpected error getting key for job %v: %v", mxJob.Name, err)
@@ -83,7 +83,7 @@ func GetKey(mxJob *mxv1beta1.MXJob, t *testing.T) string {
 	return key
 }
 
-func CheckCondition(mxJob *mxv1beta1.MXJob, condition mxv1beta1.MXJobConditionType, reason string) bool {
+func CheckCondition(mxJob *mxv1.MXJob, condition mxv1.MXJobConditionType, reason string) bool {
 	for _, v := range mxJob.Status.Conditions {
 		if v.Type == condition && v.Status == v1.ConditionTrue && v.Reason == reason {
 			return true

@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	"github.com/kubeflow/tf-operator/pkg/common/jobcontroller"
 )
 
@@ -53,7 +53,7 @@ type TaskSpec struct {
 	Index int    `json:"index"`
 }
 
-func genMXConfig(mxjob *mxv1beta1.MXJob, rtype, index string) (MXConfig, error) {
+func genMXConfig(mxjob *mxv1.MXJob, rtype, index string) (MXConfig, error) {
 	// Configure the MXCONFIG environment variable.
 	i, err := strconv.ParseInt(index, 0, 32)
 	if err != nil {
@@ -83,7 +83,7 @@ func genMXConfig(mxjob *mxv1beta1.MXJob, rtype, index string) (MXConfig, error) 
 }
 
 // genClusterSpec will generate ClusterSpec.
-func genClusterSpec(mxjob *mxv1beta1.MXJob) (ClusterSpec, error) {
+func genClusterSpec(mxjob *mxv1.MXJob) (ClusterSpec, error) {
 	clusterSpec := make(ClusterSpec)
 
 	for rtype, spec := range mxjob.Spec.MXReplicaSpecs {
@@ -109,7 +109,7 @@ func genClusterSpec(mxjob *mxv1beta1.MXJob) (ClusterSpec, error) {
 }
 
 // genLabelsSpec will generate LabelsSpec.
-func genLabelsSpec(mxjob *mxv1beta1.MXJob) (LabelsSpec, error) {
+func genLabelsSpec(mxjob *mxv1.MXJob) (LabelsSpec, error) {
 	labelsSpec := make(LabelsSpec)
 
 	for rtype, spec := range mxjob.Spec.MXReplicaSpecs {

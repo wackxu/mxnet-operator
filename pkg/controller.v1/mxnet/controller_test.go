@@ -34,17 +34,17 @@ import (
 	"github.com/kubeflow/tf-operator/pkg/control"
 
 	"github.com/kubeflow/mxnet-operator/cmd/mxnet-operator.v1beta1/app/options"
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	mxjobclientset "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned"
 	mxjobinformers "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions"
-	"github.com/kubeflow/mxnet-operator/pkg/common/util/v1beta1/testutil"
+	"github.com/kubeflow/mxnet-operator/pkg/common/util/v1/testutil"
 	batchv1alpha1 "github.com/kubernetes-sigs/kube-batch/pkg/apis/scheduling/v1alpha1"
 	kubebatchclient "github.com/kubernetes-sigs/kube-batch/pkg/client/clientset/versioned"
 )
 
 var (
-	mxJobRunning   = mxv1beta1.MXJobRunning
-	mxJobSucceeded = mxv1beta1.MXJobSucceeded
+	mxJobRunning   = mxv1.MXJobRunning
+	mxJobSucceeded = mxv1.MXJobSucceeded
 )
 
 func newMXController(
@@ -115,7 +115,7 @@ func TestNormalPath(t *testing.T) {
 		expectedSucceededServerPods int32
 		expectedFailedServerPods    int32
 
-		expectedCondition       *mxv1beta1.MXJobConditionType
+		expectedCondition       *mxv1.MXJobConditionType
 		expectedConditionReason string
 
 		// There are some cases that should not check start time since the field should be set in the previous sync loop.
@@ -213,7 +213,7 @@ func TestNormalPath(t *testing.T) {
 		config := &rest.Config{
 			Host: "",
 			ContentConfig: rest.ContentConfig{
-				GroupVersion: &mxv1beta1.SchemeGroupVersion,
+				GroupVersion: &mxv1.SchemeGroupVersion,
 			},
 		}
 		option := options.ServerOption{}
@@ -224,8 +224,8 @@ func TestNormalPath(t *testing.T) {
 		ctr.ServiceInformerSynced = testutil.AlwaysReady
 		mxJobIndexer := ctr.mxJobInformer.GetIndexer()
 
-		var actual *mxv1beta1.MXJob
-		ctr.updateStatusHandler = func(mxJob *mxv1beta1.MXJob) error {
+		var actual *mxv1.MXJob
+		ctr.updateStatusHandler = func(mxJob *mxv1.MXJob) error {
 			actual = mxJob
 			return nil
 		}
@@ -283,10 +283,10 @@ func TestNormalPath(t *testing.T) {
 		}
 		// Make sure the ControllerRefs are correct.
 		for _, controllerRef := range fakePodControl.ControllerRefs {
-			if got, want := controllerRef.APIVersion, mxv1beta1.SchemeGroupVersion.String(); got != want {
+			if got, want := controllerRef.APIVersion, mxv1.SchemeGroupVersion.String(); got != want {
 				t.Errorf("controllerRef.APIVersion = %q, want %q", got, want)
 			}
-			if got, want := controllerRef.Kind, mxv1beta1.Kind; got != want {
+			if got, want := controllerRef.Kind, mxv1.Kind; got != want {
 				t.Errorf("controllerRef.Kind = %q, want %q", got, want)
 			}
 			if got, want := controllerRef.Name, mxJob.Name; got != want {
@@ -300,39 +300,39 @@ func TestNormalPath(t *testing.T) {
 			}
 		}
 		// Validate scheduler status.
-		if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler] != nil {
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler].Active != tc.expectedActiveSchedulerPods {
-				t.Errorf("%s: unexpected number of active pods.  Expected %d, saw %d\n", name, tc.expectedActiveSchedulerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler].Active)
+		if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler] != nil {
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler].Active != tc.expectedActiveSchedulerPods {
+				t.Errorf("%s: unexpected number of active pods.  Expected %d, saw %d\n", name, tc.expectedActiveSchedulerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler].Active)
 			}
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler].Succeeded != tc.expectedSucceededSchedulerPods {
-				t.Errorf("%s: unexpected number of succeeded pods.  Expected %d, saw %d\n", name, tc.expectedSucceededSchedulerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler].Succeeded)
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler].Succeeded != tc.expectedSucceededSchedulerPods {
+				t.Errorf("%s: unexpected number of succeeded pods.  Expected %d, saw %d\n", name, tc.expectedSucceededSchedulerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler].Succeeded)
 			}
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler].Failed != tc.expectedFailedSchedulerPods {
-				t.Errorf("%s: unexpected number of failed pods.  Expected %d, saw %d\n", name, tc.expectedFailedSchedulerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeScheduler].Failed)
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler].Failed != tc.expectedFailedSchedulerPods {
+				t.Errorf("%s: unexpected number of failed pods.  Expected %d, saw %d\n", name, tc.expectedFailedSchedulerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeScheduler].Failed)
 			}
 		}
 		// Validate worker status.
-		if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker] != nil {
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker].Active != tc.expectedActiveWorkerPods {
-				t.Errorf("%s: unexpected number of active pods.  Expected %d, saw %d\n", name, tc.expectedActiveWorkerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker].Active)
+		if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker] != nil {
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker].Active != tc.expectedActiveWorkerPods {
+				t.Errorf("%s: unexpected number of active pods.  Expected %d, saw %d\n", name, tc.expectedActiveWorkerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker].Active)
 			}
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker].Succeeded != tc.expectedSucceededWorkerPods {
-				t.Errorf("%s: unexpected number of succeeded pods.  Expected %d, saw %d\n", name, tc.expectedSucceededWorkerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker].Succeeded)
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker].Succeeded != tc.expectedSucceededWorkerPods {
+				t.Errorf("%s: unexpected number of succeeded pods.  Expected %d, saw %d\n", name, tc.expectedSucceededWorkerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker].Succeeded)
 			}
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker].Failed != tc.expectedFailedWorkerPods {
-				t.Errorf("%s: unexpected number of failed pods.  Expected %d, saw %d\n", name, tc.expectedFailedWorkerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeWorker].Failed)
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker].Failed != tc.expectedFailedWorkerPods {
+				t.Errorf("%s: unexpected number of failed pods.  Expected %d, saw %d\n", name, tc.expectedFailedWorkerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeWorker].Failed)
 			}
 		}
 		// Validate Server status.
-		if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer] != nil {
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer].Active != tc.expectedActiveServerPods {
-				t.Errorf("%s: unexpected number of active pods.  Expected %d, saw %d\n", name, tc.expectedActiveServerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer].Active)
+		if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer] != nil {
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer].Active != tc.expectedActiveServerPods {
+				t.Errorf("%s: unexpected number of active pods.  Expected %d, saw %d\n", name, tc.expectedActiveServerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer].Active)
 			}
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer].Succeeded != tc.expectedSucceededServerPods {
-				t.Errorf("%s: unexpected number of succeeded pods.  Expected %d, saw %d\n", name, tc.expectedSucceededServerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer].Succeeded)
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer].Succeeded != tc.expectedSucceededServerPods {
+				t.Errorf("%s: unexpected number of succeeded pods.  Expected %d, saw %d\n", name, tc.expectedSucceededServerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer].Succeeded)
 			}
-			if actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer].Failed != tc.expectedFailedServerPods {
-				t.Errorf("%s: unexpected number of failed pods.  Expected %d, saw %d\n", name, tc.expectedFailedServerPods, actual.Status.MXReplicaStatuses[mxv1beta1.MXReplicaTypeServer].Failed)
+			if actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer].Failed != tc.expectedFailedServerPods {
+				t.Errorf("%s: unexpected number of failed pods.  Expected %d, saw %d\n", name, tc.expectedFailedServerPods, actual.Status.MXReplicaStatuses[mxv1.MXReplicaTypeServer].Failed)
 			}
 		}
 		// Validate StartTime.
@@ -366,7 +366,7 @@ func TestRun(t *testing.T) {
 	config := &rest.Config{
 		Host: "",
 		ContentConfig: rest.ContentConfig{
-			GroupVersion: &mxv1beta1.SchemeGroupVersion,
+			GroupVersion: &mxv1.SchemeGroupVersion,
 		},
 	}
 	mxJobClientSet := mxjobclientset.NewForConfigOrDie(config)
@@ -393,7 +393,7 @@ func TestSyncPdb(t *testing.T) {
 	config := &rest.Config{
 		Host: "",
 		ContentConfig: rest.ContentConfig{
-			GroupVersion: &mxv1beta1.SchemeGroupVersion,
+			GroupVersion: &mxv1.SchemeGroupVersion,
 		},
 	}
 	mxJobClientSet := mxjobclientset.NewForConfigOrDie(config)
@@ -412,20 +412,20 @@ func TestSyncPdb(t *testing.T) {
 	ctr, _, _ := newMXController(config, kubeClientSet, mxJobClientSet, kubeBatchClientSet, controller.NoResyncPeriodFunc, option)
 
 	type testCase struct {
-		mxJob     *mxv1beta1.MXJob
+		mxJob     *mxv1.MXJob
 		expectPdb *v1beta1.PodDisruptionBudget
 	}
 
 	minAvailable2 := intstr.FromInt(2)
 	testCases := []testCase{
 		{
-			mxJob: &mxv1beta1.MXJob{
+			mxJob: &mxv1.MXJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-sync-pdb",
 				},
-				Spec: mxv1beta1.MXJobSpec{
-					MXReplicaSpecs: map[mxv1beta1.MXReplicaType]*mxv1beta1.MXReplicaSpec{
-						mxv1beta1.MXReplicaTypeWorker: &mxv1beta1.MXReplicaSpec{
+				Spec: mxv1.MXJobSpec{
+					MXReplicaSpecs: map[mxv1.MXReplicaType]*mxv1.MXReplicaSpec{
+						mxv1.MXReplicaTypeWorker: &mxv1.MXReplicaSpec{
 							Replicas: proto.Int32(1),
 						},
 					},
@@ -434,13 +434,13 @@ func TestSyncPdb(t *testing.T) {
 			expectPdb: nil,
 		},
 		{
-			mxJob: &mxv1beta1.MXJob{
+			mxJob: &mxv1.MXJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-sync-pdb",
 				},
-				Spec: mxv1beta1.MXJobSpec{
-					MXReplicaSpecs: map[mxv1beta1.MXReplicaType]*mxv1beta1.MXReplicaSpec{
-						mxv1beta1.MXReplicaTypeWorker: &mxv1beta1.MXReplicaSpec{
+				Spec: mxv1.MXJobSpec{
+					MXReplicaSpecs: map[mxv1.MXReplicaType]*mxv1.MXReplicaSpec{
+						mxv1.MXReplicaTypeWorker: &mxv1.MXReplicaSpec{
 							Replicas: proto.Int32(2),
 						},
 					},

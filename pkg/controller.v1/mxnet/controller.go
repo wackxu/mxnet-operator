@@ -30,12 +30,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/kubeflow/mxnet-operator/cmd/mxnet-operator.v1beta1/app/options"
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	mxjobclientset "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned"
 	mxjobscheme "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/scheme"
 	mxjobinformers "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions"
-	mxjobinformersv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions/kubeflow/v1beta1"
-	mxjoblisters "github.com/kubeflow/mxnet-operator/pkg/client/listers/kubeflow/v1beta1"
+	mxjobinformersv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions/mxnet/v1"
+	mxjoblisters "github.com/kubeflow/mxnet-operator/pkg/client/listers/mxnet/v1"
 	"github.com/kubeflow/tf-operator/pkg/common/jobcontroller"
 	mxlogger "github.com/kubeflow/tf-operator/pkg/logger"
 	kubebatchclient "github.com/kubernetes-sigs/kube-batch/pkg/client/clientset/versioned"
@@ -78,10 +78,10 @@ type MXController struct {
 	syncHandler func(string) (bool, error)
 
 	// To allow injection of updateStatus for testing.
-	updateStatusHandler func(mxjob *mxv1beta1.MXJob) error
+	updateStatusHandler func(mxjob *mxv1.MXJob) error
 
 	// To allow injection of deleteMXJob for testing.
-	deleteMXJobHandler func(mxjob *mxv1beta1.MXJob) error
+	deleteMXJobHandler func(mxjob *mxv1.MXJob) error
 
 	// mxJobInformer is a temporary field for unstructured informer support.
 	mxJobInformer cache.SharedIndexInformer
@@ -118,7 +118,7 @@ func NewMXController(
 	// Create base controller
 	log.Info("Creating Job controller")
 	jc := jobcontroller.NewJobController(tc, metav1.Duration{Duration: 15 * time.Second},
-		option.EnableGangScheduling, kubeClientSet, kubeBatchClientSet, kubeInformerFactory, mxv1beta1.Plural)
+		option.EnableGangScheduling, kubeClientSet, kubeBatchClientSet, kubeInformerFactory, mxv1.Plural)
 	tc.JobController = jc
 	// Set sync handler.
 	tc.syncHandler = tc.syncMXJob
@@ -331,7 +331,7 @@ func (tc *MXController) syncMXJob(key string) (bool, error) {
 	return true, err
 }
 
-func getTotalReplicas(mxjob *mxv1beta1.MXJob) int32 {
+func getTotalReplicas(mxjob *mxv1.MXJob) int32 {
 	mxjobReplicas := int32(0)
 	for _, r := range mxjob.Spec.MXReplicaSpecs {
 		mxjobReplicas += *r.Replicas
@@ -341,7 +341,7 @@ func getTotalReplicas(mxjob *mxv1beta1.MXJob) int32 {
 
 // reconcileMXJobs checks and updates replicas for each given MXReplicaSpec.
 // It will requeue the mxjob in case of an error while creating/deleting pods/services.
-func (tc *MXController) reconcileMXJobs(mxjob *mxv1beta1.MXJob) error {
+func (tc *MXController) reconcileMXJobs(mxjob *mxv1.MXJob) error {
 	logger := mxlogger.LoggerForJob(mxjob)
 	logger.Infof("Reconcile MXJobs %s", mxjob.Name)
 
@@ -380,9 +380,9 @@ func (tc *MXController) reconcileMXJobs(mxjob *mxv1beta1.MXJob) error {
 		}
 
 		// Initialize the status.
-		initializeMXReplicaStatuses(mxjob, mxv1beta1.MXReplicaTypeScheduler)
-		initializeMXReplicaStatuses(mxjob, mxv1beta1.MXReplicaTypeWorker)
-		initializeMXReplicaStatuses(mxjob, mxv1beta1.MXReplicaTypeServer)
+		initializeMXReplicaStatuses(mxjob, mxv1.MXReplicaTypeScheduler)
+		initializeMXReplicaStatuses(mxjob, mxv1.MXReplicaTypeWorker)
+		initializeMXReplicaStatuses(mxjob, mxv1.MXReplicaTypeServer)
 		return tc.updateStatusHandler(mxjob)
 	}
 
@@ -411,34 +411,34 @@ func (tc *MXController) reconcileMXJobs(mxjob *mxv1beta1.MXJob) error {
 
 // inspectMXjob make sure a MXjob has all the necessary MXReplicaSpecs members for a special jobMode.
 // if not it return err
-func (tc *MXController) inspectMXjob(mxjob *mxv1beta1.MXJob) error {
+func (tc *MXController) inspectMXjob(mxjob *mxv1.MXJob) error {
 
 	logger := mxlogger.LoggerForJob(mxjob)
 
-	if mxjob.Spec.JobMode == mxv1beta1.MXTrain {
+	if mxjob.Spec.JobMode == mxv1.MXTrain {
 		// Must have MXReplicaTypeScheduler, MXReplicaTypeServer, MXReplicaTypeWorker, shouldn't have
 		// MXReplicaTypeTuner
-		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeScheduler]; !ok {
+		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeScheduler]; !ok {
 			return errWrongJobMode
 		}
-		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeServer]; !ok {
+		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeServer]; !ok {
 			return errWrongJobMode
 		}
-		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeWorker]; !ok {
+		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeWorker]; !ok {
 			return errWrongJobMode
 		}
-	} else if mxjob.Spec.JobMode == mxv1beta1.MXTune {
+	} else if mxjob.Spec.JobMode == mxv1.MXTune {
 		// Must have MXReplicaTypeTuner, shouldn't have MXReplicaTypeScheduler, MXReplicaTypeServer,
 		// MXReplicaTypeWorker
-		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeTunerTracker]; !ok {
+		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeTunerTracker]; !ok {
 			return errWrongJobMode
 		}
-		if s, ok := mxjob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeTunerServer]; !ok {
+		if s, ok := mxjob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeTunerServer]; !ok {
 			return errWrongJobMode
 		} else if s.Label == "" {
 			logger.Warnf("MXReplicaTypeTunerRPCServer may need label to set tvm rpc-server key")
 		}
-		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1beta1.MXReplicaTypeTuner]; !ok {
+		if _, ok := mxjob.Spec.MXReplicaSpecs[mxv1.MXReplicaTypeTuner]; !ok {
 			return errWrongJobMode
 		}
 	}
@@ -448,7 +448,7 @@ func (tc *MXController) inspectMXjob(mxjob *mxv1beta1.MXJob) error {
 // satisfiedExpectations returns true if the required adds/dels for the given mxjob have been observed.
 // Add/del counts are established by the controller at sync time, and updated as controllees are observed by the controller
 // manager.
-func (tc *MXController) satisfiedExpectations(mxjob *mxv1beta1.MXJob) bool {
+func (tc *MXController) satisfiedExpectations(mxjob *mxv1.MXJob) bool {
 	satisfied := false
 	mxjobKey, err := KeyFunc(mxjob)
 	if err != nil {
@@ -478,11 +478,11 @@ func (tc *MXController) GetJobFromAPIClient(namespace, name string) (metav1.Obje
 }
 
 func (tc *MXController) GetAPIGroupVersionKind() schema.GroupVersionKind {
-	return mxv1beta1.SchemeGroupVersionKind
+	return mxv1.SchemeGroupVersionKind
 }
 
 func (tc *MXController) GetAPIGroupVersion() schema.GroupVersion {
-	return mxv1beta1.SchemeGroupVersion
+	return mxv1.SchemeGroupVersion
 }
 
 func (tc *MXController) GetGroupNameLabelKey() string {
@@ -494,7 +494,7 @@ func (tc *MXController) GetJobNameLabelKey() string {
 }
 
 func (tc *MXController) GetGroupNameLabelValue() string {
-	return mxv1beta1.GroupName
+	return mxv1.GroupName
 }
 
 func (tc *MXController) GetReplicaTypeLabelKey() string {

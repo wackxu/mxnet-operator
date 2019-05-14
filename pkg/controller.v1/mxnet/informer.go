@@ -12,11 +12,11 @@ import (
 	restclientset "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
-	mxv1beta1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	mxv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	"github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/validation"
 	mxjobinformers "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions"
-	mxjobinformersv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions/kubeflow/v1beta1"
-	"github.com/kubeflow/mxnet-operator/pkg/common/util/v1beta1/unstructured"
+	mxjobinformersv1 "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions/mxnet/v1"
+	"github.com/kubeflow/mxnet-operator/pkg/common/util/v1/unstructured"
 	mxlogger "github.com/kubeflow/tf-operator/pkg/logger"
 )
 
@@ -32,15 +32,15 @@ var (
 	errWrongJobMode  = fmt.Errorf("Failed to inspect jobMode, maybe mxReplicaSpecs has a member which is not belong to this jobMode or misses one")
 )
 
-func NewUnstructuredMXJobInformer(restConfig *restclientset.Config, namespace string) mxjobinformersv1beta1.MXJobInformer {
+func NewUnstructuredMXJobInformer(restConfig *restclientset.Config, namespace string) mxjobinformersv1.MXJobInformer {
 	dclient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
 		panic(err)
 	}
 	resource := schema.GroupVersionResource{
-		Group:    mxv1beta1.GroupName,
-		Version:  mxv1beta1.GroupVersion,
-		Resource: mxv1beta1.Plural,
+		Group:    mxv1.GroupName,
+		Version:  mxv1.GroupVersion,
+		Resource: mxv1.Plural,
 	}
 	informer := unstructured.NewMXJobInformer(
 		resource,
@@ -53,16 +53,16 @@ func NewUnstructuredMXJobInformer(restConfig *restclientset.Config, namespace st
 }
 
 // NewMXJobInformer returns MXJobInformer from the given factory.
-func (tc *MXController) NewMXJobInformer(mxJobInformerFactory mxjobinformers.SharedInformerFactory) mxjobinformersv1beta1.MXJobInformer {
-	return mxJobInformerFactory.Kubeflow().V1beta1().MXJobs()
+func (tc *MXController) NewMXJobInformer(mxJobInformerFactory mxjobinformers.SharedInformerFactory) mxjobinformersv1.MXJobInformer {
+	return mxJobInformerFactory.Kubeflow().V1().MXJobs()
 }
 
-func (tc *MXController) getMXJobFromName(namespace, name string) (*mxv1beta1.MXJob, error) {
+func (tc *MXController) getMXJobFromName(namespace, name string) (*mxv1.MXJob, error) {
 	key := fmt.Sprintf("%s/%s", namespace, name)
 	return tc.getMXJobFromKey(key)
 }
 
-func (tc *MXController) getMXJobFromKey(key string) (*mxv1beta1.MXJob, error) {
+func (tc *MXController) getMXJobFromKey(key string) (*mxv1.MXJob, error) {
 	// Check if the key exists.
 	obj, exists, err := tc.mxJobInformer.GetIndexer().GetByKey(key)
 	logger := mxlogger.LoggerForKey(key)
@@ -82,16 +82,16 @@ func (tc *MXController) getMXJobFromKey(key string) (*mxv1beta1.MXJob, error) {
 	return mxjob, nil
 }
 
-func mxJobFromUnstructured(obj interface{}) (*mxv1beta1.MXJob, error) {
+func mxJobFromUnstructured(obj interface{}) (*mxv1.MXJob, error) {
 	// Check if the spec is valid.
 	un, ok := obj.(*metav1unstructured.Unstructured)
 	if !ok {
 		log.Errorf("The object in index is not an unstructured; %+v", obj)
 		return nil, errGetFromKey
 	}
-	var mxjob mxv1beta1.MXJob
+	var mxjob mxv1.MXJob
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(un.Object, &mxjob)
-	logger := mxlogger.LoggerForUnstructured(un, mxv1beta1.Kind)
+	logger := mxlogger.LoggerForUnstructured(un, mxv1.Kind)
 	if err != nil {
 		logger.Errorf(failedMarshalMsg, err)
 		return nil, errFailedMarshal
@@ -106,7 +106,7 @@ func mxJobFromUnstructured(obj interface{}) (*mxv1beta1.MXJob, error) {
 	return &mxjob, nil
 }
 
-func unstructuredFromMXJob(obj interface{}, mxJob *mxv1beta1.MXJob) error {
+func unstructuredFromMXJob(obj interface{}, mxJob *mxv1.MXJob) error {
 	un, ok := obj.(*metav1unstructured.Unstructured)
 	logger := mxlogger.LoggerForJob(mxJob)
 	if !ok {

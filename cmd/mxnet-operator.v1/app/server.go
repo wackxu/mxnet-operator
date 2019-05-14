@@ -20,11 +20,11 @@ import (
 	"time"
 
 	"github.com/kubeflow/mxnet-operator/cmd/mxnet-operator.v1/app/options"
-	"github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
+	mxnetv1 "github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	mxjobclientset "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned"
 	"github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/scheme"
 	mxjobinformers "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions"
-	controller "github.com/kubeflow/mxnet-operator/pkg/controller.v1beta1/mxnet"
+	controller "github.com/kubeflow/mxnet-operator/pkg/controller.v1/mxnet"
 	"github.com/kubeflow/mxnet-operator/pkg/version"
 	"github.com/kubeflow/tf-operator/pkg/util/signals"
 	log "github.com/sirupsen/logrus"
@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	apiVersion = "v1beta1"
+	apiVersion = "v1"
 )
 
 var (
@@ -61,7 +61,7 @@ func Run(opt *options.ServerOption) error {
 		version.PrintVersionAndExit(apiVersion)
 	}
 
-	namespace := os.Getenv(v1beta1.EnvKubeflowNamespace)
+	namespace := os.Getenv(mxnetv1.EnvKubeflowNamespace)
 	if len(namespace) == 0 {
 		log.Infof("EnvKubeflowNamespace not set, use default namespace")
 		namespace = metav1.NamespaceDefault
@@ -172,7 +172,7 @@ func createClientSets(config *restclientset.Config) (kubeclientset.Interface, ku
 		return nil, nil, nil, nil, err
 	}
 
-	checkCRDExists(crdClient, v1beta1.MXCRD)
+	checkCRDExists(crdClient, mxnetv1.MXCRD)
 
 	kubeClientSet, err := kubeclientset.NewForConfig(restclientset.AddUserAgent(config, "mxnet-operator"))
 	if err != nil {

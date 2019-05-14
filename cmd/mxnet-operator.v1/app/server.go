@@ -19,8 +19,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/kubeflow/mxnet-operator/cmd/mxnet-operator.v1beta1/app/options"
-	"github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1beta1"
+	"github.com/kubeflow/mxnet-operator/cmd/mxnet-operator.v1/app/options"
+	"github.com/kubeflow/mxnet-operator/pkg/apis/mxnet/v1"
 	mxjobclientset "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned"
 	"github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/scheme"
 	mxjobinformers "github.com/kubeflow/mxnet-operator/pkg/client/informers/externalversions"

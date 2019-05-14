@@ -18,8 +18,10 @@ package fake
 
 import (
 	clientset "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned"
-	kubeflowv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/typed/kubeflow/v1beta1"
-	fakekubeflowv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/typed/kubeflow/v1beta1/fake"
+	kubeflowv1 "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/typed/mxnet/v1"
+	fakekubeflowv1 "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/typed/mxnet/v1/fake"
+	kubeflowv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/typed/mxnet/v1beta1"
+	fakekubeflowv1beta1 "github.com/kubeflow/mxnet-operator/pkg/client/clientset/versioned/typed/mxnet/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -39,11 +41,20 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	fakePtr := testing.Fake{}
-	fakePtr.AddReactor("*", "*", testing.ObjectReaction(o))
-	fakePtr.AddWatchReactor("*", testing.DefaultWatchReactor(watch.NewFake(), nil))
+	cs := &Clientset{}
+	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
+	cs.AddReactor("*", "*", testing.ObjectReaction(o))
+	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
+		gvr := action.GetResource()
+		ns := action.GetNamespace()
+		watch, err := o.Watch(gvr, ns)
+		if err != nil {
+			return false, nil, err
+		}
+		return true, watch, nil
+	})
 
-	return &Clientset{fakePtr, &fakediscovery.FakeDiscovery{Fake: &fakePtr}}
+	return cs
 }
 
 // Clientset implements clientset.Interface. Meant to be embedded into a
@@ -65,7 +76,12 @@ func (c *Clientset) KubeflowV1beta1() kubeflowv1beta1.KubeflowV1beta1Interface {
 	return &fakekubeflowv1beta1.FakeKubeflowV1beta1{Fake: &c.Fake}
 }
 
-// Kubeflow retrieves the KubeflowV1beta1Client
-func (c *Clientset) Kubeflow() kubeflowv1beta1.KubeflowV1beta1Interface {
-	return &fakekubeflowv1beta1.FakeKubeflowV1beta1{Fake: &c.Fake}
+// KubeflowV1 retrieves the KubeflowV1Client
+func (c *Clientset) KubeflowV1() kubeflowv1.KubeflowV1Interface {
+	return &fakekubeflowv1.FakeKubeflowV1{Fake: &c.Fake}
+}
+
+// Kubeflow retrieves the KubeflowV1Client
+func (c *Clientset) Kubeflow() kubeflowv1.KubeflowV1Interface {
+	return &fakekubeflowv1.FakeKubeflowV1{Fake: &c.Fake}
 }
